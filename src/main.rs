@@ -1,3 +1,5 @@
+use encoding::all::WINDOWS_949;
+use encoding::{DecoderTrap, Encoding};
 use failure::Error;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -20,7 +22,11 @@ fn main() -> Result<(), Error> {
         .map(Result::unwrap)
         .for_each(|mut x| {
             let content = fs::read(x.to_owned()).unwrap();
-            let content_str = String::from_utf8(content).unwrap();
+            let content_str = String::from_utf8(content).unwrap_or_else(|err| {
+                WINDOWS_949
+                    .decode(err.as_bytes(), DecoderTrap::Strict)
+                    .unwrap()
+            });
             let filtered = COMMENT_RE
                 .captures_iter(&content_str)
                 .map(|x| x[1].trim().to_owned())
