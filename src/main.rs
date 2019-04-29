@@ -18,32 +18,21 @@ fn main() -> Result<(), Error> {
         .filter(|x| !x.file_stem().unwrap().to_str().unwrap().ends_with("_strip"))
         .map(fs::canonicalize)
         .map(Result::unwrap)
-        .map(|x| (fs::read(x.to_owned()), x.to_owned()))
-        .map(|(x, y)| (Result::unwrap(x), y))
-        .map(|(x, y)| (String::from_utf8(x), y))
-        .map(|(x, y)| (Result::unwrap(x), y))
-        .map(|(x, y)| {
-            (
-                COMMENT_RE
-                    .captures_iter(&x)
-                    .map(|x| x[1].trim().to_owned())
-                    .filter(|x| !x.is_empty())
-                    .fold(String::new(), |acc, x| acc + &x + "\n"),
-                y,
-            )
-        })
-        .map(|(x, mut y)| {
-            y.set_file_name(
-                y.file_stem().unwrap().to_str().unwrap().to_owned()
-                    + "_strip"
-                    + "."
-                    + y.extension().unwrap().to_str().unwrap(),
+        .for_each(|mut x| {
+            let content = fs::read(x.to_owned()).unwrap();
+            let content_str = String::from_utf8(content).unwrap();
+            let filtered = COMMENT_RE
+                .captures_iter(&content_str)
+                .map(|x| x[1].trim().to_owned())
+                .filter(|x| !x.is_empty())
+                .fold(String::new(), |acc, x| acc + &x + "\n");
+            x.set_file_name(x.file_stem().unwrap().to_str().unwrap().to_owned() + "_strip.asm");
+            fs::write(x.to_owned(), filtered.to_owned()).unwrap();
+            println!(
+                "{}: {} lines",
+                x.file_name().unwrap().to_str().unwrap(),
+                filtered.lines().count()
             );
-            fs::write(y.to_owned(), x.to_owned()).unwrap();
-            (x.lines().count(), y)
-        })
-        .for_each(|(x, y)| {
-            println!("{}: {} lines", y.file_name().unwrap().to_str().unwrap(), x);
         });
     /*
     RE.captures_iter(
